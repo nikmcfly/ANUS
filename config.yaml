@@ -1,0 +1,24 @@
+# ANUS Configuration File
+
+model:
+  provider: openai
+  name: gpt-4
+  api_key: "${OPENAI_API_KEY}"  # Uses the environment variable you set
+
+agent:
+  name: anus
+  mode: auto  # Changed from multi to auto
+  max_iterations: 10
+  memory_capacity: 2000
+  verbose: true
+
+tools:
+  enabled:
+    - calculator
+    - search
+    - text
+    - code
+
+logging:
+  level: DEBUG
+  file: logs/anus.log 

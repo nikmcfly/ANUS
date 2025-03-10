@@ -4,6 +4,7 @@ React Agent module that extends the base agent with reasoning capabilities.
 
 from typing import Dict, List, Any, Optional, Tuple
 import json
+import logging
 
 from anus.core.agent.base_agent import BaseAgent
 
@@ -99,7 +100,7 @@ class ReactAgent(BaseAgent):
             context: The current execution context.
             
         Returns:
-            A thought string.
+            The thought string.
         """
         # This should be implemented using a language model
         # Currently using a placeholder
@@ -130,13 +131,12 @@ class ReactAgent(BaseAgent):
         Returns:
             The observation from executing the action.
         """
-        # This should call the appropriate tool
-        # Currently using a placeholder
-        return {"result": f"Observation from {action_name} with input {json.dumps(action_input)}"}
+        # This should be overridden by subclasses
+        return {"status": "error", "error": f"Unknown action or tool: {action_name}"}
     
     def _should_terminate(self, context: Dict[str, Any]) -> bool:
         """
-        Determine if execution should terminate.
+        Check if execution should terminate.
         
         Args:
             context: The current execution context.
@@ -158,6 +158,98 @@ class ReactAgent(BaseAgent):
         Returns:
             The final answer string.
         """
-        # This should be implemented using a language model
-        # Currently using a placeholder
-        return f"Final answer for task: {context['task']} after {self.current_iteration + 1} iterations." 
+        # Check if we have any successful tool executions
+        for observation in context.get("observations", []):
+            if isinstance(observation, dict) and "result" in observation:
+                result = observation["result"]
+                
+                # Handle calculator tool
+                if isinstance(result, dict):
+                    # Calculator tool
+                    if "expression" in result and "result" in result and result.get("status") == "success":
+                        expression = result["expression"]
+                        calc_result = result["result"]
+                        return f"The result of {expression} is {calc_result}"
+                    elif result.get("status") == "error" and "error" in result:
+                        return f"Calculator error: {result['error']}"
+                    
+                    # Search tool
+                    if "query" in result and "results" in result:
+                        query = result["query"]
+                        results = result["results"]
+                        result_count = result.get("result_count", len(results))
+                        
+                        # Format the results
+                        formatted_results = "\n".join([f"- {r}" for r in results[:5]])
+                        comment = result.get("comment", "")
+                        comment_text = f"\n\n{comment}" if comment else ""
+                        
+                        return f"I searched for '{query}' and found {result_count} results:\n\n{formatted_results}{comment_text}"
+                    
+                    # Text tool
+                    if "text" in result and "operation" in result and "result" in result:
+                        text = result["text"]
+                        operation = result["operation"]
+                        text_result = result["result"]
+                        fun_fact = result.get("fun_fact", "")
+                        
+                        operation_description = {
+                            "count": "characters in",
+                            "reverse": "reversed",
+                            "uppercase": "in uppercase",
+                            "lowercase": "in lowercase",
+                            "capitalize": "capitalized",
+                            "wordcount": "words in"
+                        }.get(operation, operation)
+                        
+                        fun_fact_text = f"\n\n{fun_fact}" if fun_fact else ""
+                        
+                        if operation in ["count", "wordcount"]:
+                            return f"I counted {text_result} {operation_description} '{text}'{fun_fact_text}"
+                        else:
+                            return f"I processed '{text}' with {operation} operation:\n\n{text_result}{fun_fact_text}"
+                    
+                    # Code tool
+                    if "code" in result and ("result" in result or "output" in result):
+                        code = result["code"]
+                        code_result = result.get("result", "No direct result")
+                        output = result.get("output", "")
+                        execution_type = result.get("execution_type", "code")
+                        
+                        if output:
+                            return f"I executed your Python code:\n\n```python\n{code}\n```\n\nOutput:\n```\n{output}\n```"
+                        else:
+                            return f"I executed your Python code:\n\n```python\n{code}\n```\n\nResult: {code_result}"
+                
+                    # Multi-agent results
+                    if "agent_results" in result:
+                        agent_results = result["agent_results"]
+                        final_answer = []
+                        
+                        # Process each agent's contribution
+                        if "researcher" in agent_results:
+                            research = agent_results["researcher"].get("answer", "")
+                            if research:
+                                final_answer.append(f"Research findings:\n{research}")
+                        
+                        if "planner" in agent_results:
+                            plan = agent_results["planner"].get("answer", "")
+                            if plan:
+                                final_answer.append(f"Execution plan:\n{plan}")
+                        
+                        if "executor" in agent_results:
+                            execution = agent_results["executor"].get("answer", "")
+                            if execution:
+                                final_answer.append(f"Execution results:\n{execution}")
+                        
+                        if "critic" in agent_results:
+                            critique = agent_results["critic"].get("answer", "")
+                            if critique:
+                                final_answer.append(f"Analysis and recommendations:\n{critique}")
+                        
+                        # Combine all parts with proper formatting
+                        if final_answer:
+                            return "\n\n".join(final_answer)
+                            
+        # If no successful results found after analyzing the task
+        return "I was unable to process your request successfully. Please try again." 

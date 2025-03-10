@@ -5,6 +5,7 @@ Tool Agent module that extends the react agent with tool execution capabilities.
 from typing import Dict, List, Any, Optional, Tuple
 import importlib
 import logging
+import re
 
 from anus.core.agent.react_agent import ReactAgent
 
@@ -72,6 +73,72 @@ class ToolAgent(ReactAgent):
             logging.error(f"Failed to load tool {tool_name}: {e}")
             return False
     
+    def _decide_action(self, context: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+        """
+        Decide on the next action to take based on the task.
+        
+        Args:
+            context: The current execution context.
+            
+        Returns:
+            A tuple of (action_name, action_input).
+        """
+        task = context['task'].lower()
+        
+        # Check for calculator tasks
+        calc_pattern = r'calculate\s+(.+)$'
+        calc_match = re.search(calc_pattern, task, re.IGNORECASE)
+        
+        if calc_match and 'calculator' in self.tools:
+            expression = calc_match.group(1).strip()
+            logging.info(f"Matched calculator expression: '{expression}'")
+            return "calculator", {"expression": expression}
+            
+        # Check for search tasks
+        search_patterns = [
+            r'search(?:\s+for)?\s+(.+)',
+            r'find(?:\s+information(?:\s+about)?)?\s+(.+)',
+            r'look\s+up\s+(.+)'
+        ]
+        
+        for pattern in search_patterns:
+            search_match = re.search(pattern, task, re.IGNORECASE)
+            if search_match and 'search' in self.tools:
+                query = search_match.group(1)
+                return "search", {"query": query}
+                
+        # Check for text processing tasks
+        text_patterns = {
+            r'count\s+characters\s+in\s+[\'"](.+)[\'"]': ("count", lambda m: m.group(1)),
+            r'count\s+words\s+in\s+[\'"](.+)[\'"]': ("wordcount", lambda m: m.group(1)),
+            r'reverse\s+[\'"](.+)[\'"]': ("reverse", lambda m: m.group(1)),
+            r'uppercase\s+[\'"](.+)[\'"]': ("uppercase", lambda m: m.group(1)),
+            r'lowercase\s+[\'"](.+)[\'"]': ("lowercase", lambda m: m.group(1)),
+            r'capitalize\s+[\'"](.+)[\'"]': ("capitalize", lambda m: m.group(1))
+        }
+        
+        for pattern, (operation, extractor) in text_patterns.items():
+            text_match = re.search(pattern, task, re.IGNORECASE)
+            if text_match and 'text' in self.tools:
+                text = extractor(text_match)
+                return "text", {"text": text, "operation": operation}
+                
+        # Check for code execution tasks
+        code_patterns = [
+            r'run\s+code\s+```(?:python)?\s*(.+?)```',
+            r'execute\s+```(?:python)?\s*(.+?)```',
+            r'evaluate\s+```(?:python)?\s*(.+?)```'
+        ]
+        
+        for pattern in code_patterns:
+            code_match = re.search(pattern, task, re.IGNORECASE | re.DOTALL)
+            if code_match and 'code' in self.tools:
+                code = code_match.group(1).strip()
+                return "code", {"code": code}
+                
+        # Default to dummy action for other tasks
+        return "dummy_action", {"query": f"Placeholder action for {task}"}
+    
     def _execute_action(self, action_name: str, action_input: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute an action using the appropriate tool.
@@ -88,7 +155,17 @@ class ToolAgent(ReactAgent):
             try:
                 tool = self.tools[action_name]
                 result = tool.execute(**action_input)
+                
+                # Log the result (with some fun ANUS flair)
+                logging.info(f"Tool {action_name} successfully executed.")
+                
+                # If result is already a dict with status, return it directly
+                if isinstance(result, dict) and "status" in result:
+                    return result
+                    
+                # Otherwise, wrap it in a success response
                 return {"status": "success", "result": result}
+                
             except Exception as e:
                 error_message = f"Error executing tool {action_name}: {str(e)}"
                 logging.error(error_message)
@@ -98,15 +175,15 @@ class ToolAgent(ReactAgent):
             if self.load_tool(action_name):
                 # Retry execution with the newly loaded tool
                 return self._execute_action(action_name, action_input)
-            else:
-                return {"status": "error", "error": f"Unknown action or tool: {action_name}"}
+            
+            return {"status": "error", "error": f"Unknown action or tool: {action_name}"}
     
     def list_available_tools(self) -> List[Dict[str, Any]]:
         """
-        List all available tools and their descriptions.
+        List all available tools.
         
         Returns:
-            A list of dictionaries containing tool information.
+            A list of tool information dictionaries.
         """
         tool_info = []
         for name, tool in self.tools.items():
