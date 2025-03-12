@@ -483,7 +483,7 @@ For detailed documentation, visit our [Documentation Site](https://anus-ai.githu
 
 - [Installation Guide](https://anus-ai.github.io/docs/installation)
 - [Getting Started](https://anus-ai.github.io/docs/getting-started)
-- [Architecture Overview](https://anus-ai.github.io/docs/architecture)
+- [Architecture Overview](https://github.com/nikmcfly/ANUS/blob/main/docs/architecture_overview.md)
 - [API Reference](https://anus-ai.github.io/docs/api)
 - [Examples](https://anus-ai.github.io/docs/examples)
 - [Contributing Guide](https://anus-ai.github.io/docs/contributing)
