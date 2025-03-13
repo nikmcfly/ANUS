@@ -273,6 +273,16 @@ browser:
   headless: true
 ```
 
+Or a local LLM using Ollama
+
+```yaml
+llm:
+  provider: openai
+  model_name: qwq:32b
+  max_tokens: 131072,
+  base_url: http://localhost:11434/v1
+```
+
 ## 🚀 Quick Start
 
 Once installed, you can start using Anus right away:
