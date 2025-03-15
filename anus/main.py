@@ -10,7 +10,17 @@ from anus.ui.cli import CLI
 
 def main():
     """Main entry point for the Anus AI agent"""
-    parser = argparse.ArgumentParser(description="Anus AI - Autonomous Networked Utility System")
+
+    description=r"""Anus AI - Autonomous Networked Utility System
+  ___   ____   __ __  _____
+ / Y \ |    \ |  |  |/ ___/
+| ‿*‿ ||  _  ||  |  (  \_ 
+|  |  ||  |  ||  |  |\_  \
+|  |  ||  |  ||  :  |/ \  |
+|  |  ||  |  ||  *  |\    |
+|__|__||__|__| \__,_| \__/                  
+"""
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to configuration file")
     parser.add_argument("--mode", type=str, default="single", choices=["single", "multi"], help="Agent mode")
     parser.add_argument("--task", type=str, help="Task description")
