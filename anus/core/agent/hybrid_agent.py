@@ -43,6 +43,52 @@ class HybridAgent(ToolAgent):
             "executor": ToolAgent(name="executor", tools=tools),
             "critic": ToolAgent(name="critic", tools=tools)
         }
+
+    def add_specialized_agent(self, role: str, config: Dict[str, Any]) -> bool:
+        """
+        Add a specialized agent for a specific role.
+        
+        Args:
+            role: The role of the specialized agent.
+            config: Configuration for the specialized agent.
+            
+        Returns:
+            True if the agent was successfully added, False otherwise.
+        """
+        try:
+            # Create a new ToolAgent with the given configuration
+            agent_name = config.get("name", f"{role}-agent")
+            agent = ToolAgent(
+                name=agent_name,
+                max_iterations=config.get("max_iterations", self.max_iterations),
+                tools=config.get("tools", []),
+                **config.get("kwargs", {})
+            )
+
+            # Register the specialized agent
+            self.specialized_agents[role] = agent
+
+            self.log_action("add_specialized_agent", {"role": role, "agent_name": agent_name})
+
+            # Add easter egg log message based on role
+            if role == "researcher":
+                logging.debug(f"Added a researcher agent to probe deep into any subject matter")
+            elif role == "coder":
+                logging.debug(f"Added a coder agent to handle the backend implementation")
+            elif role == "planner":
+                logging.debug(f"Added a planner agent to ensure smooth passage through complex tasks")
+            elif role == "critic":
+                logging.debug(f"Added a critic agent to ensure everything comes out right in the end")
+            else:
+                logging.debug(f"Added a {role} agent to the ANUS collective")
+
+            return True
+
+        except Exception as e:
+            error_message = f"Error adding specialized agent for role {role}: {str(e)}"
+            logging.error(error_message)
+            self.log_action("add_specialized_agent", {"role": role, "status": "error", "error": error_message})
+            return False
     
     def _assess_complexity(self, task: str) -> float:
         """
@@ -69,6 +115,8 @@ class HybridAgent(ToolAgent):
             (r'all|every|each', 1.0),  # Comprehensive operations
             (r'most|best|optimal', 1.5)  # Decision making
         ]
+
+
         
         # Add complexity for each operation found
         for pattern, score in operations:
