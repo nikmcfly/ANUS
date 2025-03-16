@@ -305,6 +305,17 @@ response = agent.run("What is the capital of France?")
 print(response)
 ```
 
+
+## 🧠 Philosophy
+
+At Anus, we believe in:
+- **Openness**: AI should be accessible to everyone.
+- **Collaboration**: Great things happen when people work together.
+- **Transparency**: Users should understand how their AI systems work.
+- **Empowerment**: AI should enhance human capabilities, not replace them.
+
+- 
+
 #### Web Search
 
 ```python
